@@ -1,24 +1,24 @@
+// lib/data/repositories/meal_repository_impl.dart
+
+// NEW RTDB IMPORT
+import 'package:firebase_database/firebase_database.dart';
+
 import 'package:meal_planner_app/data/datasources/meal_remote_datasource.dart';
 import 'package:meal_planner_app/domain/entities/meal_plan.dart';
 import 'package:meal_planner_app/domain/repositories/meal_repository.dart';
 
-/// --- DATA LAYER: REPOSITORIES (IMPLEMENTATION) ---
-/// This implements the contract from the Domain Layer.
-/// It handles data logic, conversion, and persistence (currently in-memory).
-
 class MealRepositoryImpl implements MealRepository {
   final MealRemoteDataSource remoteDataSource;
+  final FirebaseDatabase? database; // NEW RTDB property
 
-  // V1 In-memory list to store plans temporarily (Simulated DB)
-  final List<MealPlan> _savedPlans = [];
+  // Constructor updated to accept RTDB
+  MealRepositoryImpl(this.remoteDataSource, {this.database});
 
-  MealRepositoryImpl(this.remoteDataSource);
-
-  // Helper method to map our simple DietType to TheMealDB's category string
+  // (API calls and mapping logic remains the same)
   String _mapDietToCategory(String dietType) {
     if (dietType == 'Vegetarian' || dietType == 'Vegan') return 'Vegetarian';
     if (dietType == 'Seafood') return 'Seafood';
-    return 'Chicken'; // Using a common category for 'Standard' and others
+    return 'Chicken';
   }
 
   @override
@@ -29,11 +29,10 @@ class MealRepositoryImpl implements MealRepository {
     final category = _mapDietToCategory(dietType);
     final rawMeals = await remoteDataSource.fetchMealListByCategory(category);
 
-    // Convert raw JSON list (minimal data) to a list of Meal entities
     return rawMeals
         .map(
           (raw) => Meal(
-            type: 'N/A', // Type is set later in the Notifier
+            type: 'N/A',
             name: raw['strMeal'] ?? 'Unknown Recipe',
             recipeId: raw['idMeal'] ?? '',
             thumbnailUrl: raw['strMealThumb'],
@@ -52,8 +51,6 @@ class MealRepositoryImpl implements MealRepository {
 
     final instructions =
         rawDetails['strInstructions'] ?? 'No instructions available.';
-
-    // Extract up to 20 ingredients and their measures (TheMealDB structure)
     final List<String> ingredients = [];
     for (int i = 1; i <= 20; i++) {
       final ingredient = rawDetails['strIngredient$i'];
@@ -66,7 +63,6 @@ class MealRepositoryImpl implements MealRepository {
       }
     }
 
-    // Return the updated Meal entity with full details
     return meal.copyWith(
       instructions: instructions,
       ingredients: ingredients,
@@ -74,18 +70,16 @@ class MealRepositoryImpl implements MealRepository {
     );
   }
 
-  // --- In-Memory Storage Implementations ---
-
+  // Unimplemented (Logic handled by Notifier due to complex UID dependency)
   @override
   Future<void> savePlan(MealPlan plan) async {
-    // Simulate latency before saving to in-memory list
-    await Future.delayed(const Duration(milliseconds: 100));
-    _savedPlans.add(plan);
+    throw UnimplementedError(
+      'Persistence handled by Notifier for UID management.',
+    );
   }
 
   @override
   Future<List<MealPlan>> getSavedPlans() async {
-    // Return a copy of the in-memory list
-    return List.from(_savedPlans);
+    throw UnimplementedError('Loading handled by Notifier for UID management.');
   }
 }
